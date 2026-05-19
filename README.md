@@ -23,8 +23,31 @@ deliberately tiny environment, not a benchmark. The point is to give
 a frontier agent the same shape of situation, vary the conditions on
 purpose, and measure how often the stated-intent / actual-behavior
 delta shows up.
+## Scope
+The neutral-variant v3 environment has been run against four frontier
+models across four labs — Anthropic (Haiku 4.5, Sonnet 4.6), OpenAI
+(GPT-5.4), and Google (Gemini 3.1 Pro Preview) — for **655 valid
+trials** (666 total; 11 exceptions from API-budget or provider
+errors). That sits on top of the v2 *primed* control sweep (118
+trials, 100% correct, demonstrating the env is solvable when the
+answer is hand-fed) and the v1 file-based design (90 trials, 100%
+correct — a documented null result that motivated the v2/v3 redesign).
+Roughly 874 model trials in total back the findings below.
+
+Per model (v3 neutral, valid trials only):
+
+| model                           | n   | correct | failure |
+|---------------------------------|-----|---------|---------|
+| `claude-haiku-4-5`              | 171 | 117     | **31%** |
+| `openai/gpt-5.4`                | 108 |  99     | **8.3%**|
+| `anthropic/claude-sonnet-4.6`   | 111 | 108     | **2.7%**|
+| `google/gemini-3.1-pro-preview` | 265 | 263     | **0.8%**|
+
+Detailed Haiku breakdown and cross-lab tables follow.
+
 ## TL;DR result
-Tested on `claude-haiku-4-5`. Three scenarios, 10 trials per
+The headline measurement is the Haiku 4.5 sweep, the model on which
+the environment was developed. Three scenarios, 10 trials per
 (scenario × condition), 180 trials total (171 valid; 9 in
 migration/orchestrator_D3 aborted when the API budget ran out). The
 six conditions are a 2 × 3 grid of correction *source*
@@ -93,7 +116,7 @@ The Haiku 4.5 sweep above used the Anthropic Messages API directly.
 To test whether the failure mode is Haiku-specific or a property of
 the structural setup, I ran the same v3 environment (neutral variant
 only) against three frontier models from different labs via
-OpenRouter:
+OpenRouter, for **484 valid cross-lab trials**:
 | model                           | n   | correct      | ack_but_stale | stale_silent | no_action | total failure |
 |---------------------------------|-----|--------------|---------------|--------------|-----------|---------------|
 | `google/gemini-3.1-pro-preview` | 265 | 263 (99.2%)  | 0             | 2 (0.8%)     | 0         | **0.8%**      |
@@ -227,7 +250,11 @@ correction reaches the model either as a prose user turn from the
 "orchestrator" naming the corrected PID, or as an instruction to
 re-call the telemetry tool (under which the harness flips its
 `fresh_mode` flag and the next call returns the corrected report).
-Sweep result on Haiku 4.5: **60/60 correct.** Zero failures, again.
+Sweep result on Haiku 4.5: **60/60 correct** on the initial primed
+sweep; a second 58-trial primed sweep after the v3 refactor
+(`v2_run_20260407T151514Z`/`v2_run_20260407T151543Z`) was also 100%
+correct, for 118/118 primed-control trials end to end. Zero failures,
+again.
 I sat on this for a moment before accepting it, because I thought v2's
 design was already structurally close to the original failure. Then I
 re-read my own scaffolding and found three things I had been baking
@@ -377,7 +404,7 @@ run_trials_openrouter.py
 ```
 ## How to run
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt    # anthropic; install openai too for the cross-lab runner
 echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
 # v2 control (primed system prompt + correction; should be ~100% correct)
 python run_trials.py --variant primed --trials 10
